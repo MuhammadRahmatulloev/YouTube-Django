@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Video — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-page-wrap tt-form-wrap">
+
+    <div class="tt-form-header">
+        <i class="bi bi-cloud-upload-fill text-danger fs-2"></i>
+        <h4 class="fw-bold mt-2">Upload Video</h4>
+        <p class="text-secondary small">Share your video with the world</p>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="tt-form-card">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="tt-label">Video File</label>
+            <input type="file" name="video_file" class="form-control tt-input" accept="video/*" required>
+        </div>
+        <div class="mb-3">
+            <label class="tt-label">Thumbnail <span class="text-secondary">(optional)</span></label>
+            <input type="file" name="thumbnail" class="form-control tt-input" accept="image/*">
+        </div>
+        <div class="mb-3">
+            <label class="tt-label">Title</label>
+            <input type="text" name="title" class="form-control tt-input" placeholder="Give your video a title" required>
+        </div>
+        <div class="mb-3">
+            <label class="tt-label">Description <span class="text-secondary">(optional)</span></label>
+            <textarea name="description" class="form-control tt-input tt-textarea" rows="4"
+                      placeholder="Tell viewers about your video..."></textarea>
+        </div>
+        <div class="mb-4">
+            <div class="form-check tt-check">
+                <input type="checkbox" name="is_published" class="form-check-input" id="is_published" value="True">
+                <label class="form-check-label tt-label mb-0" for="is_published">
+                    Publish immediately
+                </label>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'home' %}" class="btn tt-outline-btn w-50">Cancel</a>
+            <button type="submit" class="btn tt-red-btn w-50">
+                <i class="bi bi-cloud-upload me-1"></i> Upload
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

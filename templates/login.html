@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-auth-wrap">
+    <div class="tt-auth-card">
+
+        <div class="text-center mb-4">
+            <i class="bi bi-play-circle-fill text-danger" style="font-size: 2.5rem;"></i>
+            <h4 class="fw-bold mt-2">Sign in</h4>
+            <p class="text-secondary small">to continue to TajTube</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="tt-label">Username</label>
+                <input type="text" name="username" class="form-control tt-input" placeholder="Enter your username" required autofocus>
+            </div>
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label class="tt-label mb-0">Password</label>
+                    <a href="{% url 'reset_request' %}" class="tt-link small">Forgot password?</a>
+                </div>
+                <input type="password" name="password" class="form-control tt-input mt-1" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn tt-red-btn w-100">Sign In</button>
+        </form>
+
+        <p class="text-center text-secondary small mt-4 mb-0">
+            New to TajTube? <a href="{% url 'register' %}" class="tt-link">Create account</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

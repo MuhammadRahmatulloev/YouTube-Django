@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Video — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-page-wrap tt-form-wrap">
+    <div class="tt-form-card text-center">
+
+        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2.5rem;"></i>
+        <h4 class="fw-bold mt-3">Delete Video</h4>
+        <p class="text-secondary mt-2">
+            Are you sure you want to delete <strong>{{ video.title }}</strong>?
+            This action cannot be undone.
+        </p>
+
+        {% if video.thumbnail %}
+            <img src="{{ video.thumbnail.url }}" alt="{{ video.title }}" class="tt-delete-thumb my-3">
+        {% endif %}
+
+        <form method="POST" class="d-flex gap-2 justify-content-center mt-3">
+            {% csrf_token %}
+            <a href="{% url 'video_detail' video.pk %}" class="btn tt-outline-btn px-4">Cancel</a>
+            <button type="submit" class="btn btn-danger px-4">Yes, Delete</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

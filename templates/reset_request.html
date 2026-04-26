@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Reset Password — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-auth-wrap">
+    <div class="tt-auth-card">
+
+        <div class="text-center mb-4">
+            <i class="bi bi-shield-lock-fill text-danger" style="font-size: 2.5rem;"></i>
+            <h4 class="fw-bold mt-2">Reset your password</h4>
+            <p class="text-secondary small">Enter your email and we'll send you a reset code</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="tt-label">Email</label>
+                <input type="email" name="email" class="form-control tt-input" placeholder="Enter your email" required autofocus>
+            </div>
+            <button type="submit" class="btn tt-red-btn w-100">Send Reset Code</button>
+        </form>
+
+        <p class="text-center text-secondary small mt-4 mb-0">
+            Remembered it? <a href="{% url 'login' %}" class="tt-link">Sign in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

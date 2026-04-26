@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Email — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-auth-wrap">
+    <div class="tt-auth-card">
+
+        <div class="text-center mb-4">
+            <i class="bi bi-envelope-check-fill text-danger" style="font-size: 2.5rem;"></i>
+            <h4 class="fw-bold mt-2">Check your email</h4>
+            <p class="text-secondary small">We sent a 6-digit code to <strong>{{ email }}</strong></p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="tt-label">Verification Code</label>
+                <input type="text" name="otp_code" class="form-control tt-input text-center tt-otp-input"
+                       placeholder="— — — — — —" maxlength="6" required autofocus>
+            </div>
+            <button type="submit" class="btn tt-red-btn w-100">Verify Email</button>
+        </form>
+
+        <p class="text-center text-secondary small mt-4 mb-0">
+            Wrong email? <a href="{% url 'register' %}" class="tt-link">Go back</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

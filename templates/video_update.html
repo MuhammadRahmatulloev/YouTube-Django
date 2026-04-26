@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Edit Video — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-page-wrap tt-form-wrap">
+
+    <div class="tt-form-header">
+        <i class="bi bi-pencil-fill text-danger fs-2"></i>
+        <h4 class="fw-bold mt-2">Edit Video</h4>
+        <p class="text-secondary small">Update your video details</p>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="tt-form-card">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="tt-label">Title</label>
+            <input type="text" name="title" class="form-control tt-input"
+                   value="{{ video.title }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="tt-label">Description</label>
+            <textarea name="description" class="form-control tt-input tt-textarea"
+                      rows="4">{{ video.description }}</textarea>
+        </div>
+        <div class="mb-4">
+            <label class="tt-label">Thumbnail</label>
+            {% if video.thumbnail %}
+                <div class="mb-2 d-flex align-items-center gap-3">
+                    <img src="{{ video.thumbnail.url }}" alt="Current thumbnail"
+                         style="width:160px; aspect-ratio:16/9; object-fit:cover;
+                                border-radius:8px; border:1px solid var(--border);">
+                    <span class="text-secondary small">Current thumbnail</span>
+                </div>
+            {% endif %}
+            <input type="file" name="thumbnail" class="form-control tt-input" accept="image/*">
+        </div>
+        <div class="mb-4">
+            <div class="form-check tt-check">
+                <input type="checkbox" name="is_published" class="form-check-input"
+                       id="is_published" {% if video.is_published %}checked{% endif %}>
+                <label class="form-check-label tt-label mb-0" for="is_published">Published</label>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'video_detail' video.pk %}" class="btn tt-outline-btn w-50">Cancel</a>
+            <button type="submit" class="btn tt-red-btn w-50">Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

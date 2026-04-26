@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ playlist.title }} — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-page-wrap">
+
+    <!-- Playlist header -->
+    <div class="tt-playlist-header">
+        <div class="tt-playlist-header-thumb">
+            {% if playlist.videos.first.thumbnail %}
+                <img src="{{ playlist.videos.first.thumbnail.url }}" alt="{{ playlist.title }}">
+            {% else %}
+                <div class="tt-playlist-header-placeholder">
+                    <i class="bi bi-collection-play fs-1"></i>
+                </div>
+            {% endif %}
+        </div>
+        <div class="tt-playlist-header-info">
+            <span class="tt-badge">PLAYLIST</span>
+            <h1 class="fw-bold">{{ playlist.title }}</h1>
+            <p class="text-secondary mb-3">
+                <span>{{ playlist.videos.count }} videos</span> •
+                <span>{% if playlist.is_public %}<i class="bi bi-globe"></i> Public{% else %}<i class="bi bi-lock"></i> Private{% endif %}</span>
+            </p>
+            <div class="d-flex gap-2">
+                <button class="btn tt-red-btn" onclick="playAll()">
+                    <i class="bi bi-play-circle me-1"></i> Play All
+                </button>
+                {% if request.session.user_id == playlist.owner.id %}
+                    <a href="{% url 'playlist_delete' playlist.pk %}" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <hr class="tt-divider">
+
+    <!-- Videos in playlist -->
+    <div class="tt-section">
+        <h5 class="tt-section-title mb-3">Videos</h5>
+        {% if videos %}
+            <div class="tt-playlist-videos">
+                {% for video in videos %}
+                    <div class="tt-playlist-video-row">
+                        <a href="{% url 'video_detail' video.pk %}" class="tt-playlist-video-thumb-wrap">
+                            {% if video.thumbnail %}
+                                <img src="{{ video.thumbnail.url }}" alt="{{ video.title }}">
+                            {% else %}
+                                <div class="tt-thumb-placeholder">
+                                    <i class="bi bi-play-circle"></i>
+                                </div>
+                            {% endif %}
+                            <span class="tt-duration">
+                                {% if video.duration %}
+                                    {{ video.duration|time:"G:i:s" }}
+                                {% else %}
+                                    0:00
+                                {% endif %}
+                            </span>
+                        </a>
+                        <div class="tt-playlist-video-info">
+                            <h6 class="fw-semibold mb-1">
+                                <a href="{% url 'video_detail' video.pk %}" class="tt-link">{{ video.title }}</a>
+                            </h6>
+                            <p class="text-secondary small mb-1">{{ video.channel.name }}</p>
+                            <p class="text-secondary small">{{ video.views_count }} views</p>
+                        </div>
+                        {% if request.session.user_id == playlist.owner.id %}
+                            <form method="POST" action="{% url 'playlist_remove_video' playlist.pk video.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-link text-danger p-0 ms-auto" style="font-size: 0.85rem;">
+                                    <i class="bi bi-x-circle"></i> Remove
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="tt-empty-sm">
+                <i class="bi bi-collection-play"></i>
+                <p class="text-secondary">No videos in this playlist</p>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    function playAll() {
+        const firstVideoUrl = "{% if videos %}{% url 'video_detail' videos.0.pk %}{% endif %}";
+        if (firstVideoUrl) {
+            window.location.href = firstVideoUrl;
+        }
+    }
+</script>
+{% endblock %}

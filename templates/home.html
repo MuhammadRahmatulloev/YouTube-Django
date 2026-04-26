@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Home — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-home-wrap">
+
+    <div class="tt-chips-wrap">
+        <a href="?q=" class="tt-chip {% if not request.GET.q %}active{% endif %}">All</a>
+        <a href="?q=music" class="tt-chip">Music</a>
+        <a href="?q=gaming" class="tt-chip">Gaming</a>
+        <a href="?q=news" class="tt-chip">News</a>
+        <a href="?q=sport" class="tt-chip">Sport</a>
+        <a href="?q=tech" class="tt-chip">Tech</a>
+        <a href="?q=education" class="tt-chip">Education</a>
+    </div>
+
+    {% if search_query %}
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="text-secondary small">
+                Results for: <strong>{{ search_query }}</strong>
+            </span>
+            <a href="{% url 'home' %}"
+               class="btn btn-sm tt-outline-btn"
+               style="border-radius:50%;width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-x"></i>
+            </a>
+        </div>
+    {% endif %}
+
+    {% if videos %}
+        <div class="tt-video-grid">
+            {% for video in videos %}
+                <a href="{% url 'video_detail' video.pk %}" class="tt-video-card">
+                    <div class="tt-thumb-wrap">
+                        {% if video.thumbnail %}
+                            <img src="{{ video.thumbnail.url }}" alt="{{ video.title }}" class="tt-thumb">
+                        {% else %}
+                            <div class="tt-thumb-placeholder">
+                                <i class="bi bi-play-circle"></i>
+                            </div>
+                        {% endif %}
+                        <span class="tt-duration">
+                            {% if video.duration %}
+                                {{ video.duration|time:"G:i:s" }}
+                            {% else %}
+                                0:00
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="tt-video-info">
+                        <div class="tt-channel-avatar-sm">
+                            {% if video.channel.avatar %}
+                                <img src="{{ video.channel.avatar.url }}" alt="{{ video.channel.name }}">
+                            {% else %}
+                                <i class="bi bi-person-circle"></i>
+                            {% endif %}
+                        </div>
+                        <div class="tt-video-meta">
+                            <p class="tt-video-title">{{ video.title }}</p>
+                            <p class="tt-video-channel">{{ video.channel.name }}</p>
+                            <p class="tt-video-views">{{ video.views_count }} views • {{ video.created_at|timesince }} ago</p>
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="tt-empty">
+            <i class="bi bi-search tt-empty-icon"></i>
+            {% if search_query %}
+                <h5>No results for "{{ search_query }}"</h5>
+                <p class="text-secondary">Try different keywords or
+                    <a href="{% url 'home' %}" class="tt-link">clear search</a>
+                </p>
+            {% else %}
+                <i class="bi bi-camera-video tt-empty-icon"></i>
+                <h5>No videos yet</h5>
+                <p class="text-secondary">Be the first to upload a video!</p>
+                {% if request.session.user_id %}
+                    <a href="{% url 'video_create' %}" class="btn tt-red-btn mt-2">Upload Video</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn tt-red-btn mt-2">Sign In</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

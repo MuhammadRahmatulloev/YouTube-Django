@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign Up — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-auth-wrap">
+    <div class="tt-auth-card">
+
+        <div class="text-center mb-4">
+            <i class="bi bi-play-circle-fill text-danger" style="font-size: 2.5rem;"></i>
+            <h4 class="fw-bold mt-2">Create your account</h4>
+            <p class="text-secondary small">Join TajTube today</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="tt-label">Username</label>
+                <input type="text" name="username" class="form-control tt-input" placeholder="e.g. john_doe" required>
+            </div>
+            <div class="mb-3">
+                <label class="tt-label">Email</label>
+                <input type="email" name="email" class="form-control tt-input" placeholder="e.g. john@gmail.com" required>
+            </div>
+            <div class="mb-3">
+                <label class="tt-label">Password</label>
+                <input type="password" name="password" class="form-control tt-input" placeholder="Enter your password" required>
+            </div>
+            <div class="mb-4">
+                <label class="tt-label">Confirm Password</label>
+                <input type="password" name="confirm_password" class="form-control tt-input" placeholder="Repeat your password" required>
+            </div>
+            <button type="submit" class="btn tt-red-btn w-100">Create Account</button>
+        </form>
+
+        <p class="text-center text-secondary small mt-4 mb-0">
+            Already have an account? <a href="{% url 'login' %}" class="tt-link">Sign in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

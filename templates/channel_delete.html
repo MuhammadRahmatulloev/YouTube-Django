@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Channel — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-page-wrap tt-form-wrap">
+    <div class="tt-form-card text-center">
+
+        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2.5rem;"></i>
+        <h4 class="fw-bold mt-3">Delete Channel</h4>
+        <p class="text-secondary mt-2">
+            Are you sure you want to delete <strong>{{ channel.name }}</strong>?
+            All videos, comments and subscribers will be permanently removed.
+        </p>
+
+        <form method="POST" class="d-flex gap-2 justify-content-center mt-4">
+            {% csrf_token %}
+            <a href="{% url 'channel_detail' channel.pk %}" class="btn tt-outline-btn px-4">Cancel</a>
+            <button type="submit" class="btn btn-danger px-4">Yes, Delete</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

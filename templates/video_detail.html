@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% block title %}{{ video.title }} — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-watch-wrap">
+
+    <div class="tt-watch-main">
+
+        <div class="tt-player-wrap">
+            <video class="tt-player" controls>
+                <source src="{{ video.video_file.url }}" type="video/mp4">
+            </video>
+        </div>
+
+        <h5 class="fw-bold mt-3 mb-2">{{ video.title }}</h5>
+
+        <div class="tt-watch-meta">
+            <a href="{% url 'channel_detail' video.channel.pk %}" class="tt-watch-channel">
+                <div class="tt-channel-avatar-sm">
+                    {% if video.channel.avatar %}
+                        <img src="{{ video.channel.avatar.url }}" alt="{{ video.channel.name }}">
+                    {% else %}
+                        <i class="bi bi-person-circle"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <p class="fw-semibold mb-0 small">{{ video.channel.name }}</p>
+                    <p class="text-secondary mb-0" style="font-size:12px;">
+                        {{ video.channel.subscription_set.count }} subscribers
+                    </p>
+                </div>
+            </a>
+
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                {% if request.session.user_id and video.channel.owner.id != request.session.user_id %}
+                    <form method="POST" action="{% url 'subscribe_toggle' video.channel.pk %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="btn btn-sm {% if is_subscribed %}tt-outline-btn{% else %}tt-red-btn{% endif %}">
+                            {% if is_subscribed %}Subscribed{% else %}Subscribe{% endif %}
+                        </button>
+                    </form>
+                {% endif %}
+
+                <div class="tt-like-wrap">
+                    <form method="POST" action="{% url 'like_toggle' video.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="is_like" value="True">
+                        <button type="submit"
+                                class="btn tt-like-btn {% if user_like.is_like == True %}active{% endif %}">
+                            <i class="bi bi-hand-thumbs-up"></i> {{ likes_count }}
+                        </button>
+                    </form>
+                    <span class="tt-like-divider"></span>
+                    <form method="POST" action="{% url 'like_toggle' video.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="is_like" value="False">
+                        <button type="submit"
+                                class="btn tt-like-btn {% if user_like.is_like == False %}active{% endif %}">
+                            <i class="bi bi-hand-thumbs-down"></i> {{ dislikes_count }}
+                        </button>
+                    </form>
+                </div>
+
+                {% if playlists %}
+                    <div class="dropdown">
+                        <button class="btn tt-outline-btn btn-sm" data-bs-toggle="dropdown">
+                            <i class="bi bi-bookmark me-1"></i> Save
+                        </button>
+                        <ul class="dropdown-menu tt-dropdown">
+                            {% for pl in playlists %}
+                                <li>
+                                    <form method="POST"
+                                          action="{% url 'playlist_add_video' pl.pk video.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item">
+                                            {{ pl.title }}
+                                        </button>
+                                    </form>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                {% if video.channel.owner.id == request.session.user_id %}
+                    <a href="{% url 'video_update' video.pk %}" class="btn tt-outline-btn btn-sm">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'video_delete' video.pk %}" class="btn btn-sm btn-danger">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if video.description %}
+            <div class="tt-description mt-3">
+                <p class="text-secondary small mb-2">
+                    {{ video.views_count }} views • {{ video.created_at|date:"M d, Y" }}
+                </p>
+                <div class="tt-desc-text" id="descText">{{ video.description }}</div>
+                <button class="btn btn-link tt-link p-0 mt-1 small" id="descToggle"
+                        style="font-size:13px;">Show more</button>
+            </div>
+        {% endif %}
+
+        <div class="tt-comments-wrap mt-4">
+            <h6 class="fw-semibold mb-4">{{ comments|length }} Comments</h6>
+
+            {% if request.session.user_id %}
+                <form method="POST" action="{% url 'comment_create' video.pk %}"
+                      class="tt-comment-form mb-4">
+                    {% csrf_token %}
+                    <div class="tt-channel-avatar-sm flex-shrink-0">
+                        <i class="bi bi-person-circle"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <textarea name="text" class="form-control tt-comment-input" rows="1"
+                                  placeholder="Add a comment..." required></textarea>
+                        <div class="d-flex justify-content-end gap-2 mt-2">
+                            <button type="submit" class="btn tt-red-btn btn-sm">Comment</button>
+                        </div>
+                    </div>
+                </form>
+            {% else %}
+                <p class="text-secondary small mb-4">
+                    <a href="{% url 'login' %}" class="tt-link">Sign in</a> to comment
+                </p>
+            {% endif %}
+
+            <div class="tt-comments-list">
+                {% for comment in comments %}
+                    <div class="tt-comment-card">
+                        <div class="tt-channel-avatar-sm flex-shrink-0">
+                            {% if comment.author.avatar %}
+                                <img src="{{ comment.author.avatar.url }}"
+                                     alt="{{ comment.author.username }}">
+                            {% else %}
+                                <i class="bi bi-person-circle"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="fw-semibold small">{{ comment.author.username }}</span>
+                                <span class="text-secondary"
+                                      style="font-size:11px;">
+                                    {{ comment.created_at|timesince }} ago
+                                </span>
+                            </div>
+                            <p class="small mb-1" style="line-height:1.5;">{{ comment.text }}</p>
+                            {% if comment.author.id == request.session.user_id %}
+                                <form method="POST"
+                                      action="{% url 'comment_delete' comment.pk %}"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="btn btn-link text-secondary p-0"
+                                            style="font-size:11px;">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="tt-watch-sidebar">
+        <p class="text-secondary small fw-semibold mb-3">More videos</p>
+        <p class="text-secondary small">Recommendations coming soon...</p>
+    </div>
+
+</div>
+
+<script>
+    const descText   = document.getElementById('descText');
+    const descToggle = document.getElementById('descToggle');
+    if (descText && descToggle) {
+        const fullText = descText.innerText;
+        const limit    = 150;
+        if (fullText.length > limit) {
+            descText.innerText = fullText.slice(0, limit) + '...';
+            descToggle.style.display = 'inline';
+            let expanded = false;
+            descToggle.addEventListener('click', () => {
+                expanded = !expanded;
+                descText.innerText   = expanded ? fullText : fullText.slice(0, limit) + '...';
+                descToggle.textContent = expanded ? 'Show less' : 'Show more';
+            });
+        } else {
+            descToggle.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

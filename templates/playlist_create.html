@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Playlist — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-form-wrap">
+    <div class="tt-form-card">
+
+        <div class="mb-4">
+            <h4 class="fw-bold">Create Playlist</h4>
+            <p class="text-secondary small">Organize and save your favorite videos</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="tt-label">Playlist Name <span class="text-danger">*</span></label>
+                <input type="text" name="title" class="form-control tt-input" placeholder="e.g. My Favorites" maxlength="150" required autofocus>
+            </div>
+
+            <div class="mb-4">
+                <div class="form-check">
+                    <input type="checkbox" name="is_public" id="is_public" class="form-check-input" checked value="on">
+                    <label class="form-check-label" for="is_public">
+                        <i class="bi bi-globe me-1"></i> Make public (anyone can see)
+                    </label>
+                </div>
+                <small class="text-secondary d-block mt-2">Private playlists are only visible to you</small>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn tt-red-btn">
+                    <i class="bi bi-collection-play me-1"></i> Create Playlist
+                </button>
+                <a href="{% url 'playlist_list' %}" class="btn tt-outline-btn">Cancel</a>
+            </div>
+        </form>
+
+    </div>
+</div>
+{% endblock %}

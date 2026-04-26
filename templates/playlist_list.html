@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}My Playlists — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-page-wrap">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0">My Playlists</h4>
+        <a href="{% url 'playlist_create' %}" class="btn tt-red-btn">
+            <i class="bi bi-plus-circle me-1"></i> New Playlist
+        </a>
+    </div>
+
+    {% if playlists %}
+        <div class="row g-4">
+            {% for playlist in playlists %}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <div class="tt-playlist-card-lg">
+                        <a href="{% url 'playlist_detail' playlist.pk %}" class="tt-playlist-thumb-wrap">
+                            {% if playlist.videos.first.thumbnail %}
+                                <img src="{{ playlist.videos.first.thumbnail.url }}" alt="{{ playlist.title }}">
+                            {% else %}
+                                <div class="tt-playlist-thumb-placeholder">
+                                    <i class="bi bi-collection-play fs-2"></i>
+                                </div>
+                            {% endif %}
+                            <span class="tt-playlist-count-badge">{{ playlist.videos.count }} videos</span>
+                        </a>
+                        <div class="p-3">
+                            <h6 class="fw-semibold mb-1">
+                                <a href="{% url 'playlist_detail' playlist.pk %}" class="tt-link">{{ playlist.title }}</a>
+                            </h6>
+                            <p class="text-secondary small mb-2">
+                                {% if playlist.is_public %}
+                                    <i class="bi bi-globe me-1"></i> Public
+                                {% else %}
+                                    <i class="bi bi-lock me-1"></i> Private
+                                {% endif %}
+                            </p>
+                            <p class="text-secondary small mb-3">Updated {{ playlist.created_at|timesince }} ago</p>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'playlist_detail' playlist.pk %}" class="btn tt-outline-btn btn-sm flex-grow-1">
+                                    <i class="bi bi-play-circle me-1"></i> Play
+                                </a>
+                                <a href="{% url 'playlist_delete' playlist.pk %}" class="btn btn-danger btn-sm">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="tt-empty">
+            <i class="bi bi-collection-play tt-empty-icon"></i>
+            <h5>No playlists yet</h5>
+            <p class="text-secondary">Create a playlist to save your favorite videos</p>
+            <a href="{% url 'playlist_create' %}" class="btn tt-red-btn mt-2">Create Playlist</a>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

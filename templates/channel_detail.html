@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ channel.name }} — TajTube{% endblock %}
+
+{% block content %}
+<div class="tt-channel-wrap">
+
+    <div class="tt-channel-banner">
+        <div class="tt-channel-banner-inner"></div>
+    </div>
+
+        <div class="tt-channel-header">
+            <div class="tt-channel-header-avatar-wrap">
+                {% if channel.avatar %}
+                    <img src="{{ channel.avatar.url }}" alt="{{ channel.name }}" class="tt-channel-header-avatar">
+                {% else %}
+                    <div class="tt-channel-header-avatar-placeholder">
+                        <i class="bi bi-person-circle"></i>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="tt-channel-header-info">
+                <h3 class="fw-bold mb-1">{{ channel.name }}</h3>
+                <p class="text-secondary small mb-3">{{ subscribers_count }} subscribers • {{ videos.count }} videos</p>
+                {% if channel.description %}
+                    <p class="small mb-3">{{ channel.description }}</p>
+                {% endif %}
+                <div class="d-flex gap-2 align-items-center">
+                    {% if request.session.user_id %}
+                        <form method="POST" action="{% url 'subscribe_toggle' channel.pk %}">
+                            {% csrf_token %}
+                            {% if is_subscribed %}
+                                <button type="submit" class="btn tt-outline-btn">
+                                    <i class="bi bi-check me-1"></i> Subscribed
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn tt-red-btn">
+                                    Subscribe
+                                </button>
+                            {% endif %}
+                        </form>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn tt-red-btn">Subscribe</a>
+                    {% endif %}
+                    {% if request.session.user_id == channel.owner.id %}
+                        <a href="{% url 'channel_update' channel.pk %}" class="btn tt-outline-btn">
+                            <i class="bi bi-pencil me-1"></i> Edit
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    <div class="tt-channel-tabs">
+        <span class="tt-channel-tab active">Videos</span>
+    </div>
+
+    {% if videos %}
+        <div class="tt-video-grid mt-4">
+            {% for video in videos %}
+                <a href="{% url 'video_detail' video.pk %}" class="tt-video-card">
+                    <div class="tt-thumb-wrap">
+                        {% if video.thumbnail %}
+                            <img src="{{ video.thumbnail.url }}" alt="{{ video.title }}" class="tt-thumb">
+                        {% else %}
+                            <div class="tt-thumb-placeholder">
+                                <i class="bi bi-play-circle"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="tt-video-info">
+                        <div class="tt-video-meta" style="padding-left: 0;">
+                            <p class="tt-video-title">{{ video.title }}</p>
+                            <p class="tt-video-views">{{ video.views_count }} views • {{ video.created_at|timesince }} ago</p>
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="tt-empty mt-5">
+            <i class="bi bi-camera-video tt-empty-icon"></i>
+            <h5>No videos yet</h5>
+            {% if channel.owner.id == request.session.user_id %}
+                <a href="{% url 'video_create' %}" class="btn tt-red-btn mt-2">Upload Video</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
