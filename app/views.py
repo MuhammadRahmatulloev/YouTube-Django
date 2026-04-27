@@ -13,48 +13,56 @@ from django.conf import settings
 from .forms import RegisterForm, LoginForm, ChannelForm, VideoForm, CommentForm, PlaylistForm, ProfileUpdateForm
 
 
+# def serve_video_range(request, path):
+#     video_path = os.path.join(settings.MEDIA_ROOT, path)
+#     if not os.path.exists(video_path):
+#         return HttpResponse(status=404)
+
+#     file_size = os.path.getsize(video_path)
+#     range_header = request.META.get('HTTP_RANGE', '')
+#     content_type = 'video/mp4'
+
+#     if range_header:
+#         match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+#         if match:
+#             start = int(match.group(1))
+#             end = int(match.group(2)) if match.group(2) else file_size - 1
+#             end = min(end, file_size - 1)
+#             length = end - start + 1
+
+#             def iterator(p, offset, size, chunk=65536):
+#                 with open(p, 'rb') as f:
+#                     f.seek(offset)
+#                     remaining = size
+#                     while remaining > 0:
+#                         data = f.read(min(chunk, remaining))
+#                         if not data:
+#                             break
+#                         remaining -= len(data)
+#                         yield data
+
+#             response = StreamingHttpResponse(
+#                 iterator(video_path, start, length),
+#                 status=206,
+#                 content_type=content_type,
+#             )
+#             response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+#             response['Accept-Ranges'] = 'bytes'
+#             response['Content-Length'] = length
+#             return response
+
+#     response = FileResponse(open(video_path, 'rb'), content_type=content_type)
+#     response['Accept-Ranges'] = 'bytes'
+#     response['Content-Length'] = file_size
+#     return response
+
+
 def serve_video_range(request, path):
     video_path = os.path.join(settings.MEDIA_ROOT, path)
     if not os.path.exists(video_path):
         return HttpResponse(status=404)
 
-    file_size = os.path.getsize(video_path)
-    range_header = request.META.get('HTTP_RANGE', '')
-    content_type = 'video/mp4'
-
-    if range_header:
-        match = re.match(r'bytes=(\d+)-(\d*)', range_header)
-        if match:
-            start = int(match.group(1))
-            end = int(match.group(2)) if match.group(2) else file_size - 1
-            end = min(end, file_size - 1)
-            length = end - start + 1
-
-            def iterator(p, offset, size, chunk=65536):
-                with open(p, 'rb') as f:
-                    f.seek(offset)
-                    remaining = size
-                    while remaining > 0:
-                        data = f.read(min(chunk, remaining))
-                        if not data:
-                            break
-                        remaining -= len(data)
-                        yield data
-
-            response = StreamingHttpResponse(
-                iterator(video_path, start, length),
-                status=206,
-                content_type=content_type,
-            )
-            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
-            response['Accept-Ranges'] = 'bytes'
-            response['Content-Length'] = length
-            return response
-
-    response = FileResponse(open(video_path, 'rb'), content_type=content_type)
-    response['Accept-Ranges'] = 'bytes'
-    response['Content-Length'] = file_size
-    return response
+    return FileResponse(open(video_path, 'rb'), content_type='video/mp4')
 
 
 def get_current_user(request):
@@ -157,7 +165,7 @@ def login_view(request):
 
     username = request.POST.get('username', '').strip()
     password = request.POST.get('password', '')
-    user     = UserModel.objects.filter(username=username).first()
+    user = UserModel.objects.filter(username=username).first()
 
     if not user or not user.check_password(password):
         messages.error(request, 'Invalid username or password!')
@@ -180,7 +188,7 @@ def logout_view(request):
 def reset_request_view(request):
     if request.method == 'POST':
         email = request.POST.get('email', '').strip()
-        user  = UserModel.objects.filter(email=email).first()
+        user = UserModel.objects.filter(email=email).first()
 
         if user:
             otp = generate_otp()
@@ -235,7 +243,7 @@ def reset_new_password_view(request):
 
     if request.method == 'POST':
         new_password = request.POST.get('new_password', '')
-        confirm      = request.POST.get('confirm_password', '')
+        confirm = request.POST.get('confirm_password', '')
 
         if new_password != confirm:
             messages.error(request, 'Passwords do not match!')
@@ -256,8 +264,8 @@ def change_password_view(request):
         return redirect('login')
 
     if request.method == 'POST':
-        old     = request.POST.get('old', '')
-        new     = request.POST.get('new', '')
+        old = request.POST.get('old', '')
+        new = request.POST.get('new', '')
         confirm = request.POST.get('confirm', '')
 
         if not user.check_password(old):
@@ -333,12 +341,16 @@ class ChannelDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = get_current_user(self.request)
-        context['videos'] = Video.objects.filter(channel=self.object, is_published=True).order_by('-created_at')
-        context['subscribers_count'] = Subscription.objects.filter(channel=self.object).count()
-        context['is_subscribed'] = (
-            Subscription.objects.filter(subscriber=user, channel=self.object).exists()
-            if user else False
-        )
+
+        context['videos'] = (Video.objects.filter(channel=self.object, is_published=True).order_by('-created_at'))
+        context['subscribers_count'] = (Subscription.objects.filter(channel=self.object).count())
+
+        if user:
+            context['is_subscribed'] = Subscription.objects.filter(subscriber=user, channel=self.object).exists()
+        
+        else:
+            context['is_subscribed'] = False
+
         return context
 
 
@@ -386,21 +398,28 @@ class VideoDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         user = get_current_user(self.request)
         video = self.object
+
         video.views_count += 1
         video.save()
-        context['comments'] = Comment.objects.filter(video=video).select_related('author').order_by('-created_at')
+
+        context['comments'] = (
+            Comment.objects.filter(video=video).select_related('author').order_by('-created_at'))
         context['comment_form'] = CommentForm()
+
+        if user:
+            context['user_like'] = Like.objects.filter(video=video, user=user).first()
+            context['is_subscribed'] = Subscription.objects.filter(
+                subscriber=user, channel=video.channel
+            ).exists()
+            context['playlists'] = Playlist.objects.filter(owner=user)
+        else:
+            context['user_like'] = None
+            context['is_subscribed'] = False
+            context['playlists'] = []
+
         context['likes_count'] = Like.objects.filter(video=video, is_like=True).count()
         context['dislikes_count'] = Like.objects.filter(video=video, is_like=False).count()
-        context['user_like'] = (
-            Like.objects.filter(video=video, user=user).first()
-            if user else None
-        )
-        context['is_subscribed'] = (
-            Subscription.objects.filter(subscriber=user, channel=video.channel).exists()
-            if user else False
-        )
-        context['playlists'] = Playlist.objects.filter(owner=user) if user else []
+
         return context
 
 
@@ -468,7 +487,7 @@ class CommentCreateView(SessionLoginRequiredMixin, View):
 
 class CommentDeleteView(SessionLoginRequiredMixin, View):
     def post(self, request, pk):
-        user    = get_current_user(request)
+        user = get_current_user(request)
         comment = get_object_or_404(Comment, pk=pk)
         if comment.author == user or user.is_admin:
             comment.delete()
@@ -480,10 +499,10 @@ class CommentDeleteView(SessionLoginRequiredMixin, View):
 
 class LikeToggleView(SessionLoginRequiredMixin, View):
     def post(self, request, video_pk):
-        user    = get_current_user(request)
-        video   = get_object_or_404(Video, pk=video_pk)
+        user = get_current_user(request)
+        video = get_object_or_404(Video, pk=video_pk)
         is_like = request.POST.get('is_like') == 'True'
-        like    = Like.objects.filter(video=video, user=user).first()
+        like = Like.objects.filter(video=video, user=user).first()
 
         if like:
             if like.is_like == is_like:

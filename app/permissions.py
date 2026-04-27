@@ -11,7 +11,7 @@ class SessionLoginRequiredMixin:
 
 
 class OwnerOrAdminRequiredMixin:
-    owner_field  = 'owner'
+    owner_field = 'owner'
     fail_redirect = 'home'
 
     def dispatch(self, request, *args, **kwargs):
@@ -25,7 +25,7 @@ class OwnerOrAdminRequiredMixin:
         user_id = self.request.session.get('user_id')
 
         fields = self.owner_field.split('__')
-        owner  = obj
+        owner = obj
         for field in fields:
             owner = getattr(owner, field)
 
