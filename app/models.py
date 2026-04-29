@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 import uuid
 
 
@@ -9,6 +10,24 @@ class UserModel(AbstractUser):
     email_token = models.UUIDField(default=uuid.uuid4)
     otp_code = models.CharField(max_length=6, null=True, blank=True)
     reset_token = models.UUIDField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_admin(self):
+        return self.is_staff or self.is_superuser
+
+    def soft_delete(self):
+        self.is_active = False
+        self.deleted_at = timezone.now()
+        self.save()
+
+    def restore(self):
+        self.is_active = True
+        self.deleted_at = None
+        self.save()
+
+    def hard_delete(self):
+        super().delete()
 
     def __str__(self):
         return f'{self.username} - {self.email}'
@@ -34,7 +53,22 @@ class Video(models.Model):
     duration = models.PositiveIntegerField(default=0)
     views_count = models.PositiveIntegerField(default=0)
     is_published = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def soft_delete(self):
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+
+    def restore(self):
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
+
+    def hard_delete(self):
+        super().delete()
 
     def __str__(self):
         return f'{self.title} - {self.channel}'
@@ -77,3 +111,18 @@ class Playlist(models.Model):
 
     def __str__(self):
         return f'{self.title} - {self.owner}'
+
+
+class RestoreRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    email = models.EmailField()
+    reason = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.email} - {self.status}'

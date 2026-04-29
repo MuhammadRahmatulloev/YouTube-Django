@@ -1,5 +1,6 @@
 from django.shortcuts import redirect
 from django.contrib import messages
+from .models import UserModel
 
 
 class SessionLoginRequiredMixin:
@@ -30,9 +31,21 @@ class OwnerOrAdminRequiredMixin:
             owner = getattr(owner, field)
 
         if owner.id != user_id:
-            from .models import UserModel
             user = UserModel.objects.filter(id=user_id).first()
             if not user or not user.is_admin:
                 messages.error(self.request, 'You do not have permission to do this!')
                 return redirect(self.fail_redirect)
         return obj
+
+
+class AdminRequiredMixin:
+    def dispatch(self, request, *args, **kwargs):
+        user_id = request.session.get('user_id')
+        if not user_id:
+            messages.error(request, 'Please login first!')
+            return redirect('login')
+        user = UserModel.objects.filter(id=user_id).first()
+        if not user or not user.is_admin:
+            messages.error(request, 'Admin access required.')
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)

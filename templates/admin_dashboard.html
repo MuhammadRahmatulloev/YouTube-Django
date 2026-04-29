@@ -1,0 +1,487 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard — TajTube{% endblock %}
+
+{% block content %}
+<style>
+.adm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+}
+.adm-title {
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.adm-badge {
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+.adm-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+}
+.adm-stat {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+}
+.adm-stat::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--accent, var(--border));
+}
+.adm-stat.green { --accent: #2ecc71; }
+.adm-stat.red   { --accent: var(--red); }
+.adm-stat.yellow { --accent: #f39c12; }
+.adm-stat.blue  { --accent: #3ea6ff; }
+.adm-stat-num {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+    color: var(--accent, var(--text));
+}
+.adm-stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.adm-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.adm-tabs::-webkit-scrollbar { display: none; }
+.adm-tab {
+    padding: 10px 18px;
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    position: relative;
+}
+.adm-tab:hover { color: var(--text); }
+.adm-tab.active {
+    color: var(--text);
+    border-bottom-color: var(--red);
+    font-weight: 600;
+}
+.adm-notif {
+    background: var(--red);
+    color: #fff;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+.adm-panel { display: none; }
+.adm-panel.active { display: block; }
+.adm-table-wrap {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.adm-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.adm-table th {
+    text-align: left;
+    padding: 11px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-3);
+    white-space: nowrap;
+}
+.adm-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    vertical-align: middle;
+}
+.adm-table tbody tr:last-child td { border-bottom: none; }
+.adm-table tbody tr:hover td { background: rgba(255,255,255,0.03); }
+.adm-empty td {
+    text-align: center;
+    color: var(--text-2);
+    padding: 48px 16px;
+    font-size: 13px;
+}
+.adm-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+.adm-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+    line-height: 1.4;
+}
+.adm-btn:hover { opacity: 0.85; }
+.adm-btn-restore { background: #2ecc71; color: #fff; }
+.adm-btn-remove  { background: var(--bg-3); color: var(--text); border: 1px solid var(--border); }
+.adm-btn-delete  { background: var(--red); color: #fff; }
+.adm-btn-approve { background: #3ea6ff; color: #fff; }
+.adm-btn-reject  { background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border); }
+.adm-form { display: inline; }
+.status-pending  { background: rgba(243,156,18,.15); color: #f39c12; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.status-approved { background: rgba(46,204,113,.15); color: #2ecc71; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.status-rejected { background: rgba(255,0,0,.15);    color: var(--red);  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.adm-reason {
+    max-width: 280px;
+    color: var(--text-2);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.adm-protected {
+    font-size: 11px;
+    color: var(--text-2);
+    background: var(--bg-3);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+.adm-id { color: var(--text-2); font-size: 12px; }
+.adm-dim { color: var(--text-2); }
+</style>
+
+<div class="adm-header">
+    <div class="adm-title">
+        <i class="bi bi-shield-fill-check text-danger"></i>
+        Admin Dashboard
+        <span class="adm-badge">ADMIN</span>
+    </div>
+    <a href="{% url 'home' %}" class="btn tt-outline-btn" style="font-size:13px; padding:6px 14px;">
+        <i class="bi bi-arrow-left me-1"></i> Back to Site
+    </a>
+</div>
+
+<div class="adm-stats">
+    <div class="adm-stat blue">
+        <div class="adm-stat-num">{{ stats.total_users }}</div>
+        <div class="adm-stat-label">Total Users</div>
+    </div>
+    <div class="adm-stat green">
+        <div class="adm-stat-num">{{ stats.active_users }}</div>
+        <div class="adm-stat-label">Active Users</div>
+    </div>
+    <div class="adm-stat red">
+        <div class="adm-stat-num">{{ stats.deleted_users }}</div>
+        <div class="adm-stat-label">Deleted Users</div>
+    </div>
+    <div class="adm-stat blue">
+        <div class="adm-stat-num">{{ stats.total_videos }}</div>
+        <div class="adm-stat-label">Active Videos</div>
+    </div>
+    <div class="adm-stat red">
+        <div class="adm-stat-num">{{ stats.deleted_videos }}</div>
+        <div class="adm-stat-label">Deleted Videos</div>
+    </div>
+    <div class="adm-stat yellow">
+        <div class="adm-stat-num">{{ stats.pending_requests }}</div>
+        <div class="adm-stat-label">Pending Requests</div>
+    </div>
+</div>
+
+<div class="adm-tabs">
+    <button class="adm-tab active" onclick="switchTab('users')">
+        Users <span class="adm-dim" style="font-weight:400;">({{ stats.active_users }})</span>
+    </button>
+    <button class="adm-tab" onclick="switchTab('deleted-users')">
+        Deleted Users <span class="adm-dim" style="font-weight:400;">({{ stats.deleted_users }})</span>
+    </button>
+    <button class="adm-tab" onclick="switchTab('videos')">
+        Videos <span class="adm-dim" style="font-weight:400;">({{ stats.total_videos }})</span>
+    </button>
+    <button class="adm-tab" onclick="switchTab('deleted-videos')">
+        Deleted Videos <span class="adm-dim" style="font-weight:400;">({{ stats.deleted_videos }})</span>
+    </button>
+    <button class="adm-tab" onclick="switchTab('requests')">
+        Restore Requests
+        {% if stats.pending_requests %}<span class="adm-notif">{{ stats.pending_requests }}</span>{% endif %}
+    </button>
+</div>
+
+<div class="adm-panel active" id="panel-users">
+    <div class="adm-table-wrap">
+        <table class="adm-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Joined</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in active_users %}
+                <tr>
+                    <td class="adm-id">#{{ u.id }}</td>
+                    <td class="fw-semibold">{{ u.username }}</td>
+                    <td class="adm-dim">{{ u.email }}</td>
+                    <td class="adm-dim">{{ u.date_joined|date:"M d, Y" }}</td>
+                    <td>
+                        {% if u.is_staff %}<span class="status-approved">Admin</span>
+                        {% else %}<span class="adm-dim">User</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_staff %}
+                            <span class="adm-protected">Protected</span>
+                        {% else %}
+                            <form class="adm-form" method="POST" action="{% url 'admin_soft_delete_user' u.pk %}">
+                                {% csrf_token %}
+                                <button class="adm-btn adm-btn-remove" type="submit"
+                                        onclick="return confirm('Deactivate {{ u.username }}?')">
+                                    Deactivate
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="adm-empty"><td colspan="6">No active users</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="adm-panel" id="panel-deleted-users">
+    <div class="adm-table-wrap">
+        <table class="adm-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Deactivated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in deleted_users %}
+                <tr>
+                    <td class="adm-id">#{{ u.id }}</td>
+                    <td class="fw-semibold" style="opacity:.55;">{{ u.username }}</td>
+                    <td class="adm-dim">{{ u.email }}</td>
+                    <td class="adm-dim">{{ u.deleted_at|date:"M d, Y" }}</td>
+                    <td>
+                        <div class="adm-actions">
+                            <form class="adm-form" method="POST" action="{% url 'admin_restore_user' u.pk %}">
+                                {% csrf_token %}
+                                <button class="adm-btn adm-btn-restore" type="submit">Restore</button>
+                            </form>
+                            <form class="adm-form" method="POST" action="{% url 'admin_hard_delete_user' u.pk %}">
+                                {% csrf_token %}
+                                <button class="adm-btn adm-btn-delete" type="submit"
+                                        onclick="return confirm('Permanently delete {{ u.username }}? This cannot be undone.')">
+                                    Delete Forever
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="adm-empty"><td colspan="5">No deleted users</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="adm-panel" id="panel-videos">
+    <div class="adm-table-wrap">
+        <table class="adm-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Channel</th>
+                    <th>Views</th>
+                    <th>Published</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in all_videos %}
+                <tr>
+                    <td class="adm-id">#{{ v.id }}</td>
+                    <td>
+                        <a href="{% url 'video_detail' v.pk %}" class="tt-link fw-semibold" style="font-size:13px;">
+                            {{ v.title|truncatechars:42 }}
+                        </a>
+                    </td>
+                    <td class="adm-dim">{{ v.channel.name }}</td>
+                    <td class="adm-dim">{{ v.views_count }}</td>
+                    <td>
+                        {% if v.is_published %}<span class="status-approved">Yes</span>
+                        {% else %}<span class="status-rejected">No</span>{% endif %}
+                    </td>
+                    <td>
+                        <form class="adm-form" method="POST" action="{% url 'admin_soft_delete_video' v.pk %}">
+                            {% csrf_token %}
+                            <button class="adm-btn adm-btn-remove" type="submit"
+                                    onclick="return confirm('Move this video to trash?')">
+                                Remove
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="adm-empty"><td colspan="6">No videos</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="adm-panel" id="panel-deleted-videos">
+    <div class="adm-table-wrap">
+        <table class="adm-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Channel</th>
+                    <th>Deleted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in deleted_videos %}
+                <tr>
+                    <td class="adm-id">#{{ v.id }}</td>
+                    <td class="fw-semibold" style="opacity:.55;">{{ v.title|truncatechars:42 }}</td>
+                    <td class="adm-dim">{{ v.channel.name }}</td>
+                    <td class="adm-dim">{{ v.deleted_at|date:"M d, Y" }}</td>
+                    <td>
+                        <div class="adm-actions">
+                            <form class="adm-form" method="POST" action="{% url 'admin_restore_video' v.pk %}">
+                                {% csrf_token %}
+                                <button class="adm-btn adm-btn-restore" type="submit">Restore</button>
+                            </form>
+                            <form class="adm-form" method="POST" action="{% url 'admin_hard_delete_video' v.pk %}">
+                                {% csrf_token %}
+                                <button class="adm-btn adm-btn-delete" type="submit"
+                                        onclick="return confirm('Permanently delete this video?')">
+                                    Delete Forever
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="adm-empty"><td colspan="5">No deleted videos</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="adm-panel" id="panel-requests">
+    <div class="adm-table-wrap">
+        <table class="adm-table">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in restore_requests %}
+                <tr>
+                    <td class="fw-semibold" style="font-size:13px;">{{ req.email }}</td>
+                    <td><div class="adm-reason" title="{{ req.reason }}">{{ req.reason }}</div></td>
+                    <td>
+                        {% if req.status == 'pending' %}<span class="status-pending">Pending</span>
+                        {% elif req.status == 'approved' %}<span class="status-approved">Approved</span>
+                        {% else %}<span class="status-rejected">Rejected</span>{% endif %}
+                    </td>
+                    <td class="adm-dim">{{ req.created_at|date:"M d, Y" }}</td>
+                    <td>
+                        {% if req.status == 'pending' %}
+                            <div class="adm-actions">
+                                <form class="adm-form" method="POST" action="{% url 'admin_approve_request' req.pk %}">
+                                    {% csrf_token %}
+                                    <button class="adm-btn adm-btn-approve" type="submit">Approve</button>
+                                </form>
+                                <form class="adm-form" method="POST" action="{% url 'admin_reject_request' req.pk %}">
+                                    {% csrf_token %}
+                                    <button class="adm-btn adm-btn-reject" type="submit">Reject</button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <span class="adm-dim" style="font-size:12px;">Resolved</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="adm-empty"><td colspan="5">No restore requests</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+const TAB_IDS = ['users', 'deleted-users', 'videos', 'deleted-videos', 'requests'];
+
+function switchTab(tab) {
+    document.querySelectorAll('.adm-tab').forEach((btn, i) => {
+        btn.classList.toggle('active', TAB_IDS[i] === tab);
+    });
+    TAB_IDS.forEach(id => {
+        const panel = document.getElementById('panel-' + id);
+        if (panel) panel.classList.toggle('active', id === tab);
+    });
+    localStorage.setItem('tt-admin-tab', tab);
+}
+
+const saved = localStorage.getItem('tt-admin-tab');
+if (saved && TAB_IDS.includes(saved)) switchTab(saved);
+</script>
+{% endblock %}

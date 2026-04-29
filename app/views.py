@@ -4,64 +4,18 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.core.mail import send_mail
 import random
-from .models import UserModel, Channel, Video, Comment, Like, Subscription, Playlist
-from .forms import RegisterForm, LoginForm, ChannelForm, VideoForm, CommentForm, PlaylistForm
-from .permissions import SessionLoginRequiredMixin, OwnerOrAdminRequiredMixin
-import os, re
-from django.http import StreamingHttpResponse, FileResponse, HttpResponse
-from django.conf import settings
+from .models import UserModel, Channel, Video, Comment, Like, Subscription, Playlist, RestoreRequest
 from .forms import RegisterForm, LoginForm, ChannelForm, VideoForm, CommentForm, PlaylistForm, ProfileUpdateForm
-
-
-# def serve_video_range(request, path):
-#     video_path = os.path.join(settings.MEDIA_ROOT, path)
-#     if not os.path.exists(video_path):
-#         return HttpResponse(status=404)
-
-#     file_size = os.path.getsize(video_path)
-#     range_header = request.META.get('HTTP_RANGE', '')
-#     content_type = 'video/mp4'
-
-#     if range_header:
-#         match = re.match(r'bytes=(\d+)-(\d*)', range_header)
-#         if match:
-#             start = int(match.group(1))
-#             end = int(match.group(2)) if match.group(2) else file_size - 1
-#             end = min(end, file_size - 1)
-#             length = end - start + 1
-
-#             def iterator(p, offset, size, chunk=65536):
-#                 with open(p, 'rb') as f:
-#                     f.seek(offset)
-#                     remaining = size
-#                     while remaining > 0:
-#                         data = f.read(min(chunk, remaining))
-#                         if not data:
-#                             break
-#                         remaining -= len(data)
-#                         yield data
-
-#             response = StreamingHttpResponse(
-#                 iterator(video_path, start, length),
-#                 status=206,
-#                 content_type=content_type,
-#             )
-#             response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
-#             response['Accept-Ranges'] = 'bytes'
-#             response['Content-Length'] = length
-#             return response
-
-#     response = FileResponse(open(video_path, 'rb'), content_type=content_type)
-#     response['Accept-Ranges'] = 'bytes'
-#     response['Content-Length'] = file_size
-#     return response
+from .permissions import SessionLoginRequiredMixin, OwnerOrAdminRequiredMixin, AdminRequiredMixin
+import os, re
+from django.http import FileResponse, HttpResponse
+from django.conf import settings
 
 
 def serve_video_range(request, path):
     video_path = os.path.join(settings.MEDIA_ROOT, path)
     if not os.path.exists(video_path):
         return HttpResponse(status=404)
-
     return FileResponse(open(video_path, 'rb'), content_type='video/mp4')
 
 
@@ -172,7 +126,7 @@ def login_view(request):
         return render(request, 'login.html')
 
     if not user.is_active:
-        messages.error(request, 'Please verify your email first!')
+        messages.error(request, 'Your account is deactivated. You can request restoration below.')
         return render(request, 'login.html')
 
     request.session['user_id'] = user.id
@@ -298,7 +252,7 @@ class ProfileView(View):
             'playlists': Playlist.objects.filter(owner=user),
             'subscriptions': subscriptions,
         })
-    
+
 
 class ProfileUpdateView(SessionLoginRequiredMixin, View):
     def get(self, request):
@@ -315,13 +269,60 @@ class ProfileUpdateView(SessionLoginRequiredMixin, View):
         return redirect('profile')
 
 
+class DeleteAccountView(SessionLoginRequiredMixin, View):
+    def get(self, request):
+        return render(request, 'delete_account.html')
+
+    def post(self, request):
+        user = get_current_user(request)
+        password = request.POST.get('password', '')
+        if not user.check_password(password):
+            messages.error(request, 'Incorrect password.')
+            return render(request, 'delete_account.html')
+        user.soft_delete()
+        request.session.flush()
+        messages.success(request, 'Your account has been deactivated.')
+        return redirect('login')
+
+
+class RestoreRequestView(View):
+    def get(self, request):
+        return render(request, 'restore_request.html')
+
+    def post(self, request):
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        reason = request.POST.get('reason', '').strip()
+
+        if not all([email, password, reason]):
+            messages.error(request, 'Please fill in all fields.')
+            return render(request, 'restore_request.html')
+
+        user = UserModel.objects.filter(email=email, is_active=False, deleted_at__isnull=False).first()
+        if not user:
+            messages.error(request, 'No deactivated account found with this email.')
+            return render(request, 'restore_request.html')
+
+        if not user.check_password(password):
+            messages.error(request, 'Invalid password.')
+            return render(request, 'restore_request.html')
+
+        if RestoreRequest.objects.filter(email=email, status='pending').exists():
+            messages.warning(request, 'A restore request for this account is already pending.')
+            return render(request, 'restore_request.html')
+
+        RestoreRequest.objects.create(email=email, reason=reason)
+        messages.success(request, 'Your request has been submitted. An admin will review it shortly.')
+        return redirect('login')
+
+
 class HomeView(ListView):
     model = Video
     template_name = 'home.html'
     context_object_name = 'videos'
 
     def get_queryset(self):
-        qs = Video.objects.filter(is_published=True).select_related('channel').order_by('-created_at')
+        qs = Video.objects.filter(is_published=True, is_deleted=False).select_related('channel').order_by('-created_at')
         q = self.request.GET.get('q', '').strip()
         if q:
             qs = qs.filter(title__icontains=q)
@@ -342,12 +343,13 @@ class ChannelDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         user = get_current_user(self.request)
 
-        context['videos'] = (Video.objects.filter(channel=self.object, is_published=True).order_by('-created_at'))
-        context['subscribers_count'] = (Subscription.objects.filter(channel=self.object).count())
+        context['videos'] = Video.objects.filter(
+            channel=self.object, is_published=True, is_deleted=False
+        ).order_by('-created_at')
+        context['subscribers_count'] = Subscription.objects.filter(channel=self.object).count()
 
         if user:
             context['is_subscribed'] = Subscription.objects.filter(subscriber=user, channel=self.object).exists()
-        
         else:
             context['is_subscribed'] = False
 
@@ -392,7 +394,11 @@ class VideoDetailView(DetailView):
     context_object_name = 'video'
 
     def get_queryset(self):
-        return Video.objects.select_related('channel').prefetch_related('comment_set')
+        user_id = self.request.session.get('user_id')
+        user = UserModel.objects.filter(id=user_id).first() if user_id else None
+        if user and user.is_admin:
+            return Video.objects.select_related('channel').prefetch_related('comment_set')
+        return Video.objects.filter(is_deleted=False).select_related('channel').prefetch_related('comment_set')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -402,8 +408,7 @@ class VideoDetailView(DetailView):
         video.views_count += 1
         video.save()
 
-        context['comments'] = (
-            Comment.objects.filter(video=video).select_related('author').order_by('-created_at'))
+        context['comments'] = Comment.objects.filter(video=video).select_related('author').order_by('-created_at')
         context['comment_form'] = CommentForm()
 
         if user:
@@ -458,17 +463,22 @@ class VideoUpdateView(OwnerOrAdminRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class VideoDeleteView(OwnerOrAdminRequiredMixin, DeleteView):
-    model = Video
-    template_name = 'video_delete.html'
-    context_object_name = 'video'
+class VideoDeleteView(OwnerOrAdminRequiredMixin, View):
     owner_field = 'channel__owner'
     fail_redirect = 'home'
-    success_url = reverse_lazy('home')
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Video deleted successfully!')
-        return super().form_valid(form)
+    def get(self, request, pk):
+        video = get_object_or_404(Video, pk=pk)
+        return render(request, 'video_delete.html', {'video': video})
+
+    def post(self, request, pk):
+        video = get_object_or_404(Video, pk=pk)
+        video.soft_delete()
+        messages.success(request, 'Video deleted successfully!')
+        return redirect('home')
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(Video, pk=self.kwargs['pk'])
 
 
 class CommentCreateView(SessionLoginRequiredMixin, View):
@@ -478,7 +488,7 @@ class CommentCreateView(SessionLoginRequiredMixin, View):
         form = CommentForm(request.POST)
         if form.is_valid():
             comment = form.save(commit=False)
-            comment.video  = video
+            comment.video = video
             comment.author = user
             comment.save()
             messages.success(request, 'Comment added!')
@@ -549,7 +559,7 @@ class PlaylistDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['videos'] = self.object.videos.select_related('channel')
+        context['videos'] = self.object.videos.filter(is_deleted=False).select_related('channel')
         return context
 
 
@@ -596,3 +606,104 @@ class PlaylistRemoveVideoView(SessionLoginRequiredMixin, View):
         playlist.videos.remove(video)
         messages.success(request, f'Video removed from "{playlist.title}"!')
         return redirect('playlist_detail', pk=playlist_pk)
+
+
+# Admin views
+
+class AdminDashboardView(AdminRequiredMixin, View):
+    def get(self, request):
+        stats = {
+            'total_users': UserModel.objects.filter(deleted_at__isnull=True).count(),
+            'active_users': UserModel.objects.filter(is_active=True).count(),
+            'deleted_users': UserModel.objects.filter(is_active=False, deleted_at__isnull=False).count(),
+            'total_videos': Video.objects.filter(is_deleted=False).count(),
+            'deleted_videos': Video.objects.filter(is_deleted=True).count(),
+            'pending_requests': RestoreRequest.objects.filter(status='pending').count(),
+        }
+        return render(request, 'admin_dashboard.html', {
+            'stats': stats,
+            'active_users': UserModel.objects.filter(is_active=True).order_by('-date_joined'),
+            'deleted_users': UserModel.objects.filter(is_active=False, deleted_at__isnull=False).order_by('-deleted_at'),
+            'all_videos': Video.objects.filter(is_deleted=False).select_related('channel').order_by('-created_at'),
+            'deleted_videos': Video.objects.filter(is_deleted=True).select_related('channel').order_by('-deleted_at'),
+            'restore_requests': RestoreRequest.objects.all().order_by('-created_at'),
+        })
+
+
+class AdminSoftDeleteUserView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        user = get_object_or_404(UserModel, pk=pk)
+        if user.is_admin:
+            messages.error(request, 'Cannot deactivate admin accounts.')
+        else:
+            user.soft_delete()
+            messages.success(request, f'User "{user.username}" deactivated.')
+        return redirect('admin_dashboard')
+
+
+class AdminRestoreUserView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        user = get_object_or_404(UserModel, pk=pk)
+        user.restore()
+        messages.success(request, f'User "{user.username}" restored.')
+        return redirect('admin_dashboard')
+
+
+class AdminHardDeleteUserView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        user = get_object_or_404(UserModel, pk=pk)
+        if user.is_admin:
+            messages.error(request, 'Cannot permanently delete admin accounts.')
+            return redirect('admin_dashboard')
+        username = user.username
+        user.hard_delete()
+        messages.success(request, f'User "{username}" permanently deleted.')
+        return redirect('admin_dashboard')
+
+
+class AdminSoftDeleteVideoView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        video = get_object_or_404(Video, pk=pk)
+        video.soft_delete()
+        messages.success(request, f'Video "{video.title}" moved to trash.')
+        return redirect('admin_dashboard')
+
+
+class AdminRestoreVideoView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        video = get_object_or_404(Video, pk=pk)
+        video.restore()
+        messages.success(request, f'Video "{video.title}" restored.')
+        return redirect('admin_dashboard')
+
+
+class AdminHardDeleteVideoView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        video = get_object_or_404(Video, pk=pk)
+        title = video.title
+        video.hard_delete()
+        messages.success(request, f'Video "{title}" permanently deleted.')
+        return redirect('admin_dashboard')
+
+
+class AdminApproveRestoreRequestView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        restore_req = get_object_or_404(RestoreRequest, pk=pk)
+        user = UserModel.objects.filter(email=restore_req.email, is_active=False).first()
+        if user:
+            user.restore()
+            restore_req.status = 'approved'
+            restore_req.save()
+            messages.success(request, f'Account for {restore_req.email} has been restored.')
+        else:
+            messages.error(request, 'User not found or already active.')
+        return redirect('admin_dashboard')
+
+
+class AdminRejectRestoreRequestView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        restore_req = get_object_or_404(RestoreRequest, pk=pk)
+        restore_req.status = 'rejected'
+        restore_req.save()
+        messages.success(request, f'Restore request from {restore_req.email} rejected.')
+        return redirect('admin_dashboard')
